@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Auth & User Service Routes
+        - id: auth-user-service
+          uri: lb://auth-user-service
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**
+          filters:
+            - AuthenticationFilter
+
+        # Restaurant Service Routes
+        - id: restaurant-service
+          uri: lb://restaurant-service
+          predicates:
+            - Path=/api/v1/restaurants/**, /api/v1/menus/**, /api/v1/categories/**
+          filters:
+            - AuthenticationFilter
+
+        # Order Service Routes
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**, /api/v1/cart/**
+          filters:
+            - AuthenticationFilter
+
+        # Payment Service Routes
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - AuthenticationFilter
+
+        # Delivery Service Routes
+        - id: delivery-service
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/deliveries/**
+          filters:
+            - AuthenticationFilter
+
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - AuthenticationFilter
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+
+jwt:
+  secret: QuickBiteSuperSecretKeyForJwtAuthenticationAndAuthorizationPurposes2026
+  expiration-ms: 86400000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

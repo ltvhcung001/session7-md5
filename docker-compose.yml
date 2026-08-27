@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # Infrastructure: PostgreSQL Database
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: quickbite-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5433:5432" # mapped to 5433 on host to avoid port clash with existing 5432 containers
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - quickbite-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # Infrastructure: Apache Kafka & Zookeeper
+  # -------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: quickbite-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - quickbite-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: quickbite-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Discovery Service (Eureka)
+  # -------------------------------------------------------------
+  discovery-service:
+    build:
+      context: .
+      dockerfile: discovery-service/Dockerfile
+    container_name: quickbite-discovery
+    ports:
+      - "8761:8761"
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # API Gateway
+  # -------------------------------------------------------------
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: quickbite-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - discovery-service
+    environment:
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Auth & User Service
+  # -------------------------------------------------------------
+  auth-user-service:
+    build:
+      context: .
+      dockerfile: auth-user-service/Dockerfile
+    container_name: quickbite-auth-user
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_user_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Restaurant Service
+  # -------------------------------------------------------------
+  restaurant-service:
+    build:
+      context: .
+      dockerfile: restaurant-service/Dockerfile
+    container_name: quickbite-restaurant
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_restaurant_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Order Service
+  # -------------------------------------------------------------
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: quickbite-order
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_order_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Payment Service
+  # -------------------------------------------------------------
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: quickbite-payment
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_payment_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Delivery Service
+  # -------------------------------------------------------------
+  delivery-service:
+    build:
+      context: .
+      dockerfile: delivery-service/Dockerfile
+    container_name: quickbite-delivery
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_delivery_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+  # -------------------------------------------------------------
+  # Notification Service
+  # -------------------------------------------------------------
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: quickbite-notification
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quickbite_notification_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+    networks:
+      - quickbite-network
+
+networks:
+  quickbite-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
