@@ -1,4 +1,4 @@
-package com.quickbite.user;
+package com.quickbite.payment;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,18 +10,18 @@ import java.util.Map;
 
 @SpringBootApplication
 @RestController
-@RequestMapping("/api/v1/users")
-public class UserServiceApplication {
+@RequestMapping("/api/v1/payments")
+public class PaymentServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(UserServiceApplication.class, args);
+        SpringApplication.run(PaymentServiceApplication.class, args);
     }
 
     @GetMapping("/health")
     public Map<String, Object> health() {
         return Map.of(
                 "status", "UP",
-                "service", "user-service"
+                "service", "payment-service"
         );
     }
 }
