@@ -3,6 +3,11 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Specs & Specify ###
+specs/
+specify/
+.specify/
+
 ### STS ###
 .apt_generated
 .classpath
@@ -26,6 +31,10 @@ bin/
 /dist/
 /nbdist/
 /.nb-gradle/
+
+### Gradle ###
+.gradle
+build/
 
 ### VS Code ###
 .vscode/
