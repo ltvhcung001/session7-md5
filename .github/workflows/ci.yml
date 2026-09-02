@@ -1,58 +1,63 @@
-name: Payment Service CI
+name: Payment Service CI - Pull Image from GHCR
 
 on:
   push:
     branches:
       - main
       - master
+      - Session8-HW4
   pull_request:
     branches:
       - main
       - master
+      - Session8-HW4
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  test_job:
-    name: Run Unit Tests
+  pull_and_verify:
+    name: Pull & Verify GHCR Image
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java JDK 21
-        uses: actions/setup-java@v4
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+      - name: Pull and Run Payment Service Container
+        run: |
+          # 1. Chuyển đổi tên owner/repo sang chữ thường để bảo đảm hợp lệ chuẩn GHCR
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER}/payment-service:1.0.0"
 
-      - name: Run Unit Tests
-        run: ./gradlew test
+          echo "=== 1. Pulling image from GHCR: ${IMAGE} ==="
+          docker pull "${IMAGE}"
 
-  build_job:
-    name: Build & Package Artifact
-    needs: test_job
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+          echo "=== 2. Starting container in detached mode ==="
+          docker run -d --name payment-service-verify -p 8084:8084 "${IMAGE}"
 
-      - name: Setup Java JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
+          echo "=== 3. Waiting for container initialization ==="
+          sleep 6
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+          echo "=== 4. Checking container status ==="
+          docker ps --filter "name=payment-service-verify"
 
-      - name: Build JAR Package
-        run: ./gradlew bootJar -x test
+          echo "=== 5. Verifying health endpoint ==="
+          curl -f http://localhost:8084/api/v1/payments/health
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: payment-service-artifact
-          path: build/libs/*.jar
-          retention-days: 3
+          echo ""
+          echo "=== Verification Succeeded: Image pulled and container verified successfully! ==="
+
+      - name: Stop and Cleanup Container
+        if: always()
+        run: |
+          docker stop payment-service-verify || true
+          docker rm payment-service-verify || true
