@@ -140,12 +140,33 @@ gantt
 
 ---
 
-## 5. HƯỚNG DẪN NỘP BÀI LÊN PORTAL
+## 5. KẾT QUẢ THỰC TẾ TRÊN GITHUB ACTIONS (XÁC NHẬN THÀNH CÔNG 100%)
+
+### 5.1. Thông tin Workflow Run
+* **Workflow Name:** `Payment Service CI - Pull Image from GHCR`
+* **Run ID:** `33683484020` (Run #9)
+* **Branch:** `Session8-HW4`
+* **Status:** `completed` ✔
+* **Conclusion:** `success` ✔ (Màu xanh lá)
+* **Tổng thời gian các bước chính:** **~12 giây** (toàn bộ job ~21s bao gồm setup/cleanup runner).
+* **Đường dẫn màn hình kết quả:**
+  👉 **`https://github.com/ltvhcung001/session7-md5/actions/runs/33683484020`**
+
+### 5.2. Nhật ký chi tiết các bước (Step Timings)
+| Bước thực hiện | Trạng thái | Thời gian thực thi |
+| :--- | :---: | :---: |
+| 1. Checkout repository | ✔ Success | 1s |
+| 2. Log in to GitHub Container Registry (GHCR) | ✔ Success | 2s |
+| 3. Pull Docker Image from GHCR | ✔ Success | 5s |
+| 4. Run Container in Detached Mode | ✔ Success | 1s |
+| 5. Verify Running Container (`docker ps` + `docker logs`) | ✔ Success | 3s |
+| 6. Stop and Cleanup Container | ✔ Success | 6s |
+
+---
+
+## 6. HƯỚNG DẪN NỘP BÀI LÊN PORTAL
 
 1. **File nộp trực tiếp:**
    * File [`.github/workflows/ci.yml`](file:///home/cungh/Documents/rikkei/md5/ss7/.github/workflows/ci.yml) hoàn chỉnh.
-2. **Đường dẫn (URL) kết quả chạy thành công:**
-   * Sau khi push branch `Session8-HW4` lên GitHub, truy cập tab **Actions** tại:
-     `https://github.com/ltvhcung001/session7-md5/actions`
-   * Mở workflow run mới nhất của branch `Session8-HW4` (có tích xanh `completed - success`).
-   * Sao chép đường link URL của màn hình run đó (dạng `https://github.com/ltvhcung001/session7-md5/actions/runs/xxxxxxxx`) để nộp lên Portal LMS.
+2. **Đường dẫn (URL) màn hình kết quả chạy Workflow thành công:**
+   * **`https://github.com/ltvhcung001/session7-md5/actions/runs/33683484020`**
