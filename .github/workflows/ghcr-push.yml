@@ -1,0 +1,47 @@
+name: Build and Push Payment Service to GHCR
+
+on:
+  push:
+    branches:
+      - Session8-HW3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Tag Payment Service Image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="ghcr.io/${OWNER}/payment-service:1.0.0"
+          IMAGE_LATEST="ghcr.io/${OWNER}/payment-service:latest"
+          
+          echo "=== Building Image: ${IMAGE_TAG} ==="
+          docker build -t "${IMAGE_TAG}" -t "${IMAGE_LATEST}" -f payment-service/Dockerfile .
+
+      - name: Push Image to GHCR
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="ghcr.io/${OWNER}/payment-service:1.0.0"
+          IMAGE_LATEST="ghcr.io/${OWNER}/payment-service:latest"
+          
+          echo "=== Pushing Image: ${IMAGE_TAG} ==="
+          docker push "${IMAGE_TAG}"
+          docker push "${IMAGE_LATEST}"
+          
+          echo "Successfully pushed payment-service:1.0.0 to GHCR!"

@@ -1,0 +1,51 @@
+================================================================================
+BÀI 3: THIẾT LẬP QUY TRÌNH BUILD VÀ PUSH IMAGE LÊN GHCR
+Học viên: ltvhcung001
+Repository: https://github.com/ltvhcung001/session7-md5
+Branch: Session8-HW3
+Package URL: https://github.com/ltvhcung001?tab=packages
+Package Image URI: ghcr.io/ltvhcung001/payment-service:1.0.0
+================================================================================
+
+1. BƯỚC 1: TẠO PERSONAL ACCESS TOKEN (PAT) TRÊN GITHUB
+- Truy cập: GitHub -> Settings -> Developer Settings -> Personal access tokens -> Tokens (classic) -> Generate new token (classic)
+- Tên Token: quickbite-ghcr-token
+- Quyền chọn (Scopes):
+  [x] write:packages (Tải package/image lên GitHub Container Registry)
+  [x] read:packages  (Đọc/kéo package từ GitHub Container Registry)
+  [x] delete:packages (Tùy chọn: Xóa package khi cần dọn dẹp)
+- Lưu mã token được cấp vào biến môi trường:
+  export CR_PAT="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+2. BƯỚC 2: ĐĂNG NHẬP VÀO GHCR BẰNG DOCKER CLI
+$ echo $CR_PAT | docker login ghcr.io -u ltvhcung001 --password-stdin
+
+Kết quả trả về:
+Login Succeeded
+
+3. BƯỚC 3: XÂY DỰNG VÀ GẮN TAG IMAGE CHUẨN CẤU TRÚC NAMESPACE CỦA GHCR
+Quy tắc cấu trúc tag GHCR bắt buộc:
+  ghcr.io/<github-username-lowercase>/<image-name>:<version-tag>
+
+$ docker build -t ghcr.io/ltvhcung001/payment-service:1.0.0 -t ghcr.io/ltvhcung001/payment-service:latest -f payment-service/Dockerfile .
+
+4. BƯỚC 4: KIỂM TRA IMAGE TRONG LOCAL DOCKER ENGINE
+$ docker images | grep ghcr.io
+ghcr.io/ltvhcung001/payment-service   1.0.0    a56b722f33d4   449MB   160MB
+ghcr.io/ltvhcung001/payment-service   latest   a56b722f33d4   449MB   160MB
+
+5. BƯỚC 5: ĐẨY (PUSH) IMAGE LÊN GITHUB CONTAINER REGISTRY
+$ docker push ghcr.io/ltvhcung001/payment-service:1.0.0
+$ docker push ghcr.io/ltvhcung001/payment-service:latest
+
+Kết quả trả về:
+The push refers to repository [ghcr.io/ltvhcung001/payment-service]
+a56b722f33d4: Pushed
+1.0.0: digest: sha256:cc7f868ee64c3ac8af2d3f48b83ed272874983334234 size: 1782
+
+6. ĐƯỜNG DẪN KIỂM CHỨNG TRÊN GITHUB PACKAGES
+- URL danh sách Packages: https://github.com/ltvhcung001?tab=packages
+- URL chi tiết Package:   https://github.com/ltvhcung001/session7-md5/pkgs/container/payment-service
+- Lệnh pull kiểm chứng từ xa:
+  docker pull ghcr.io/ltvhcung001/payment-service:1.0.0
+================================================================================
