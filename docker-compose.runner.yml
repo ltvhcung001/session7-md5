@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: quickbite-github-runner
+    restart: unless-stopped
+    environment:
+      # URL của repository trên GitHub
+      REPO_URL: ${REPO_URL:-https://github.com/ltvhcung001/session7-md5}
+      # Registration Token được cấp tại: Repository -> Settings -> Actions -> Runners -> New runner
+      RUNNER_TOKEN: ${RUNNER_TOKEN}
+      # Tên định danh Runner
+      RUNNER_NAME: ${RUNNER_NAME:-quickbite-linux-runner}
+      # Nhãn mục tiêu tương ứng với 'runs-on' trong GitHub Actions workflow
+      RUNNER_LABELS: ${RUNNER_LABELS:-self-hosted,linux,x64}
+      # GID của group docker trên máy host (để runner có quyền truy cập socket không bị Permission denied)
+      DOCKER_GID: ${DOCKER_GID:-973}
+    volumes:
+      # =========================================================================
+      # [DooD Solution] Chia sẻ Docker Socket vật lý từ máy host vào bên trong container Runner:
+      # Ánh xạ /var/run/docker.sock của host sang /var/run/docker.sock của container
+      # Giúp Docker CLI trong container điều khiển Docker Daemon chạy ngoài máy host
+      # =========================================================================
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Volume lưu trữ workspace thực thi job CI
+      - runner-work-data:/_work
+
+volumes:
+  runner-work-data:

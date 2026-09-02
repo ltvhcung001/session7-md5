@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - master
+      - Session8-HW1
   pull_request:
     branches:
       - main
       - master
+      - Session8-HW1
 
 jobs:
   test_job:
@@ -56,3 +58,27 @@ jobs:
           name: payment-service-artifact
           path: build/libs/*.jar
           retention-days: 3
+
+  docker_job:
+    name: Docker DooD Build & Verification
+    needs: build_job
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Daemon Connection (DooD)
+        run: |
+          echo "=== 1. Checking Docker Daemon via DooD Socket ==="
+          docker info
+          docker version
+
+      - name: Build Payment Service Docker Image
+        run: |
+          echo "=== 2. Testing Docker Build via DooD Socket ==="
+          docker build -t quickbite-payment-service:latest -f payment-service/Dockerfile .
+
+      - name: Verify Built Docker Image
+        run: |
+          echo "=== 3. Verifying Docker Images on Host Daemon ==="
+          docker images | grep quickbite-payment-service
