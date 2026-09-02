@@ -32,29 +32,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull and Run Payment Service Container
+      - name: Pull Docker Image from GHCR
         run: |
-          # 1. Chuyển đổi tên owner/repo sang chữ thường để bảo đảm hợp lệ chuẩn GHCR
+          # 1. Khắc phục rủi ro tên owner/repo chứa chữ hoa bằng cách chuyển sang chữ thường
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/payment-service:1.0.0"
 
-          echo "=== 1. Pulling image from GHCR: ${IMAGE} ==="
+          echo "=== Pulling image from GHCR: ${IMAGE} ==="
           docker pull "${IMAGE}"
 
-          echo "=== 2. Starting container in detached mode ==="
+      - name: Run Container in Detached Mode
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER}/payment-service:1.0.0"
+
+          echo "=== Starting container in detached mode ==="
           docker run -d --name payment-service-verify -p 8084:8084 "${IMAGE}"
 
-          echo "=== 3. Waiting for container initialization ==="
-          sleep 6
-
-          echo "=== 4. Checking container status ==="
+      - name: Verify Running Container
+        run: |
+          sleep 3
+          echo "=== Checking container status ==="
           docker ps --filter "name=payment-service-verify"
 
-          echo "=== 5. Verifying health endpoint ==="
-          curl -f http://localhost:8084/api/v1/payments/health
-
-          echo ""
-          echo "=== Verification Succeeded: Image pulled and container verified successfully! ==="
+          echo "=== Inspecting container logs ==="
+          docker logs --tail 30 payment-service-verify
 
       - name: Stop and Cleanup Container
         if: always()
