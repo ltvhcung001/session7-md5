@@ -1,0 +1,88 @@
+================================================================================
+BÀI TẬP 1 (SESSION 9): KHẮC PHỤC SỰ CỐ PIPELINE CI/CD CƠ BẢN TRÊN GITLAB CI
+Học viên: ltvhcung001
+Branch: Session9-HW1
+GitHub Repository URL: https://github.com/ltvhcung001/session7-md5/tree/Session9-HW1
+================================================================================
+
+I. PHÂN TÍCH LÝ DO ĐOẠN MÃ TRÊN BỊ LỖI TRÊN GITLAB RUNNER MẶC ĐỊNH
+
+Đoạn mã ban đầu bị lỗi:
+--------------------------------------------------------------------------------
+stages:
+  build_app
+
+build_job:
+  stage: build_app
+  script:
+    - ./gradlew clean build -x test
+--------------------------------------------------------------------------------
+
+Đoạn mã trên gặp phải 2 lỗi nghiêm trọng khiến pipeline không thể chạy:
+
+1. LỖI THỨ NHẤT: Sai cú pháp khai báo mảng trong YAML tại keyword "stages"
+- Nguyên nhân: Keyword "stages" trong GitLab CI nhận giá trị là một danh sách/mảng (array/sequence of strings). Trong cú pháp YAML, mỗi phần tử của mảng bắt buộc phải có dấu gạch ngang và dấu cách ở đầu dòng ("- ").
+- Hiện trạng: Viết "build_app" không có dấu gạch ngang khiến parser hiểu là scalar string hoặc invalid mapping.
+- Hậu quả: Pipeline bị lỗi cú pháp YAML (Syntax Error: "jobs:stages config should be an array of strings") và bị từ chối ngay từ khâu parse file cấu hình.
+
+2. LỖI THỨ HAI: Thiếu keyword "image" chứa môi trường Java (JDK) / Gradle
+- Nguyên nhân: Mặc định nếu không chỉ định keyword "image", GitLab Runner (Docker executor) sẽ chạy trên Docker image mặc định (thường là ruby:latest hoặc image Linux nguyên bản). Những image này KHÔNG HỀ cài đặt Java (JDK 17) hay Gradle.
+- Hậu quả: Khi bước "script" gọi lệnh "./gradlew clean build -x test", hệ thống không tìm thấy máy ảo Java (JVM) hay lệnh "java" trong PATH, dẫn đến lỗi:
+  "command not found: java" hoặc "./gradlew: not found".
+
+3. Điểm thiếu sót bổ sung (Best Practice):
+- File ./gradlew có thể thiếu quyền thực thi sau khi clone mã nguồn -> Cần thêm "before_script: chmod +x ./gradlew".
+- Chưa có cấu hình "cache" để tái sử dụng thư viện Gradle giữa các build.
+- Chưa có "artifacts" để lưu trữ file .jar sau khi build thành công.
+
+
+II. NỘI DUNG FILE .gitlab-ci.yml CHUẨN XÁC ĐÃ ĐƯỢC SỬA HOÀN CHỈNH
+
+# ==============================================================================
+# GitLab CI Configuration - QuickBite Microservices Platform
+# ==============================================================================
+image: eclipse-temurin:17-jdk-alpine
+
+stages:
+  - build_app
+
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .gradle/wrapper/
+    - .gradle/caches/
+
+build_job:
+  stage: build_app
+  before_script:
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew clean build -x test
+  artifacts:
+    name: "user-service-build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - build/libs/*.jar
+    expire_in: 1 week
+
+
+III. KẾT QUẢ KIỂM CHỨNG LỆNH BUILD TRÊN LOCAL
+Lệnh: docker run --rm -v $(pwd):/app -w /app eclipse-temurin:17-jdk-alpine ./gradlew clean build -x test
+Kết quả:
+> Task :clean
+> Task :compileJava
+> Task :processResources
+> Task :classes
+> Task :resolveMainClassName
+> Task :bootJar
+> Task :jar
+> Task :assemble
+> Task :check
+> Task :build
+BUILD SUCCESSFUL in 1m 2s
+Artifact sinh ra tại build/libs/payment-service-0.0.1-SNAPSHOT.jar (21MB)
+
+Link GitHub: https://github.com/ltvhcung001/session7-md5/tree/Session9-HW1
+================================================================================

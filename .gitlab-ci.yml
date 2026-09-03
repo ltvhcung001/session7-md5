@@ -1,0 +1,37 @@
+# ==============================================================================
+# GitLab CI Configuration - QuickBite Microservices Platform
+# Module: User / Payment Service Build Pipeline
+# ==============================================================================
+
+# 1. Khai báo Docker image chứa sẵn môi trường OpenJDK 17 và Alpine Linux siêu nhẹ
+image: eclipse-temurin:17-jdk-alpine
+
+# 2. Khai báo danh sách các stages đúng chuẩn cú pháp mảng trong YAML (sử dụng dấu gạch ngang)
+stages:
+  - build_app
+
+# Cấu hình biến môi trường hỗ trợ Gradle
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+# Thiết lập bộ nhớ đệm cache để tối ưu tốc độ build ở các lần chạy tiếp theo
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .gradle/wrapper/
+    - .gradle/caches/
+
+# Job thực hiện đóng gói ứng dụng
+build_job:
+  stage: build_app
+  before_script:
+    # Cấp quyền thực thi cho Gradle wrapper script
+    - chmod +x ./gradlew
+  script:
+    # Thực hiện build ứng dụng bỏ qua bước chạy test
+    - ./gradlew clean build -x test
+  artifacts:
+    name: "user-service-build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - build/libs/*.jar
+    expire_in: 1 week
