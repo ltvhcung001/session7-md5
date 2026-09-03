@@ -1,0 +1,66 @@
+# ==============================================================================
+# GitLab CI Configuration - QuickBite Microservices Platform
+# Dự án: Quản lý nhân sự (HRM) / Payment Microservices
+# Pipeline: Chạy Integration Test với PostgreSQL Service và Đóng gói Artifact
+# ==============================================================================
+
+# 1. Định nghĩa 2 stages tuần tự: Chạy Test trước, nếu pass mới Build
+stages:
+  - test
+  - build
+
+# 2. Khai báo các biến môi trường toàn cục (Global Variables)
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  # Cấu hình biến môi trường kết nối cho PostgreSQL container
+  POSTGRES_DB: "quickbite_db"
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres_password"
+  POSTGRES_HOST_AUTH_METHOD: "trust"
+
+# 3. Cấu hình Cache tái sử dụng dependencies giữa các jobs
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .gradle/wrapper/
+    - .gradle/caches/
+
+# ------------------------------------------------------------------------------
+# STAGE 1: TEST - Khởi chạy Database container PostgreSQL và chạy Unit/Integration Test
+# ------------------------------------------------------------------------------
+test_job:
+  stage: test
+  image: gradle:8.8-jdk17
+  services:
+    # Dựng tạm Database PostgreSQL 14 song song với môi trường Test
+    - name: postgres:14-alpine
+      alias: postgres
+  variables:
+    # Cấu hình Spring Boot kết nối tới PostgreSQL service thông qua hostname 'postgres'
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/quickbite_db"
+    SPRING_DATASOURCE_USERNAME: "postgres"
+    SPRING_DATASOURCE_PASSWORD: "postgres_password"
+  before_script:
+    - chmod +x ./gradlew
+  script:
+    - echo "=== Khởi chạy Unit / Integration Test kết nối PostgreSQL Service ==="
+    - ./gradlew test
+
+# ------------------------------------------------------------------------------
+# STAGE 2: BUILD - Đóng gói file thực thi JAR và lưu trữ bằng Artifacts
+# ------------------------------------------------------------------------------
+build_job:
+  stage: build
+  image: eclipse-temurin:17-jdk-alpine
+  before_script:
+    - chmod +x ./gradlew
+  script:
+    - echo "=== Đóng gói ứng dụng thành file JAR (bỏ qua bước test vì đã chạy ở stage test) ==="
+    - ./gradlew build -x test
+  artifacts:
+    name: "hrm-service-build-$CI_COMMIT_SHORT_SHA"
+    # Đường dẫn lưu trữ file JAR đầu ra do Gradle sinh ra
+    paths:
+      - build/libs/*.jar
+    # Thời gian lưu trữ artifact trên hệ thống: 1 ngày
+    expire_in: 1 day
